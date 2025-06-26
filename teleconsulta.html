@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Teleconsulta - Agora</title>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    #videos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .video-container {
+      width: 45%;
+      min-width: 300px;
+      height: 300px;
+      background-color: #000;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Teleconsulta</h2>
+  <p>Entrando na sala de vídeo...</p>
+  <div id="videos">
+    <div id="local-video" class="video-container"></div>
+    <div id="remote-video" class="video-container"></div>
+  </div>
+
+  <script>
+    const appId = abc8325f04dc4f7caf3a4bd84661b3a0 
+    const urlParams = new URLSearchParams(window.location.search);
+    const channel = urlParams.get("channel");
+
+    if (!channel || !appId) {
+      alert("Faltando App ID ou canal.");
+      throw new Error("Canal ou App ID não definidos");
+    }
+
+    const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+    let localTrack, remoteTrack;
+
+    async function startVideoCall() {
+      await client.join(appId, channel, null, null);
+
+      const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      localTrack = videoTrack;
+
+      videoTrack.play("local-video");
+
+      await client.publish([audioTrack, videoTrack]);
+
+      client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        if (mediaType === "video") {
+          const remoteVideoTrack = user.videoTrack;
+          remoteTrack = remoteVideoTrack;
+          remoteVideoTrack.play("remote-video");
+        }
+        if (mediaType === "audio") {
+          user.audioTrack.play();
+        }
+      });
+
+      client.on("user-unpublished", () => {
+        document.getElementById("remote-video").innerHTML = "";
+      });
+    }
+
+    startVideoCall();
+  </script>
+</body>
+</html>
